@@ -55,6 +55,11 @@ namespace VIVE.OpenXR.Samples.EyeTracker
                 return;
             }
 
+            if (isStop)
+            {
+                return;
+            }
+
             // •½‹Ï’l‚ª‹‚Ü‚Á‚½‚ç‘ÎŒõ”½‰‚ğ’²‚×‚é
             if (hasCalculatedAverage)
             {
