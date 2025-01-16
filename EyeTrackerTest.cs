@@ -50,6 +50,8 @@ namespace VIVE.OpenXR.Samples.EyeTracker
         bool isStart = false;
         bool isStop = false;
 
+        bool isExport = false;
+
 
         void Update()
         {
@@ -73,7 +75,12 @@ namespace VIVE.OpenXR.Samples.EyeTracker
 
                 if (isStop)
                 {
-                    ExportToCsv();
+
+                    if (!isExport) {
+                        ExportToCsv();
+                        Debug.LogError("Export to CSV!");
+                    }
+                    
                     return;
                 }
 
@@ -119,7 +126,31 @@ namespace VIVE.OpenXR.Samples.EyeTracker
 
             ExportListToCsv(rightContractionList, "RightContractionList.csv");
             ExportListToCsv(rightExpantionList, "RightExpantionList.csv");
+
+
+            ExportPupilDataToCsv("PupilData.csv");
+
+            isExport = true;
         }
+
+
+        private void ExportPupilDataToCsv(string fileName)
+        {
+            StringBuilder csvContent = new StringBuilder();
+            csvContent.AppendLine("Eye,Average Diameter,Minimum Diameter,Contraction Rate,Contraction Speed,Expansion Speed"); // å©èoÇµçsÇÃí«â¡
+
+            // ç∂ñ⁄ÇÃÉfÅ[É^
+            csvContent.AppendLine($"Left,{leftAverage.ToString("F4")},{leftPupilMin.ToString("F4")},{leftContractionRate.ToString("F4")},{leftContractionSpeed.ToString("F4")},{leftExpantionSpeed.ToString("F4")}");
+
+            // âEñ⁄ÇÃÉfÅ[É^
+            csvContent.AppendLine($"Right,{rightAverage.ToString("F4")},{rightPupilMin.ToString("F4")},{rightContractionRate.ToString("F4")},{rightContractionSpeed.ToString("F4")},{rightExpantionSpeed.ToString("F4")}");
+
+            // ÉJÉåÉìÉgÉfÉBÉåÉNÉgÉäÇ…ÉtÉ@ÉCÉãÇèoóÕ
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), fileName);
+            File.WriteAllText(filePath, csvContent.ToString()); // CSVÉtÉ@ÉCÉãÇ…èëÇ´çûÇ›
+            Debug.Log($"{fileName} has been saved to {filePath}");
+        }
+
 
         private void ExportListToCsv(List<float[]> dataList, string fileName)
         {
@@ -158,9 +189,11 @@ namespace VIVE.OpenXR.Samples.EyeTracker
 
             if (sec < 10f)
             {
-                leftDiameterTimeList.Add([leftDiameter, sec]);
-                rightDiameterTimeList.Add([rightDiameter, sec]);
+                Debug.LogError($"Adding data - leftDiameter: {leftDiameter}, sec: {sec}");
+                leftDiameterTimeList.Add(new float[] { leftDiameter, sec });
+                rightDiameterTimeList.Add(new float[] { rightDiameter, sec });
                 sec += Time.deltaTime;
+                Debug.LogError($"List count after adding: {leftDiameterTimeList.Count}");
             }
             else if (!isStop)
             {
@@ -168,11 +201,17 @@ namespace VIVE.OpenXR.Samples.EyeTracker
                 var leftList = SplitDiameterTimeList(leftDiameterTimeList, leftPupilMin);
                 var rightList = SplitDiameterTimeList(rightDiameterTimeList, rightPupilMin);
 
+                
+
                 leftContractionList = leftList.before;
                 leftExpantionList = leftList.after;
+                Debug.LogError($"leftContractionListCount: {leftContractionList.Count}");
+                Debug.LogError($"leftExpantionListCount: {leftExpantionList.Count}");
 
                 rightContractionList = rightList.before;
                 rightExpantionList = rightList.after;
+                Debug.LogError($"rightContractionListCount: {rightContractionList.Count}");
+                Debug.LogError($"rightExpantionListCount: {rightExpantionList.Count}");
 
                 CalculateContractionSpeed();
                 CalculateExpantionSpeed();
@@ -231,72 +270,88 @@ namespace VIVE.OpenXR.Samples.EyeTracker
         private void CalculateExpantionSpeed()
         {
             // ç∂ñ⁄
-            float deltaLeftMaxToMin = Math.abs(leftAverage - leftPupilMin);
-            float a = leftAverage - deltaLeftMaxToMin * 0.9; // 10%çƒägí£
-            float b = leftAverage - deltaLeftMaxToMin * 0.5; // 50%çƒägí£
+            float deltaLeftMaxToMin = Mathf.Abs(leftAverage - leftPupilMin);
+            float a = leftAverage - deltaLeftMaxToMin * 0.9f; // 10%çƒägí£
+            float b = leftAverage - deltaLeftMaxToMin * 0.5f; // 50%çƒägí£
             float a_time = GetFirstTimeAboveDiameter(leftExpantionList, a);
             float b_time = GetFirstTimeAboveDiameter(leftExpantionList, b);
             float leftTime = b_time - a_time;
 
-            leftExpantionSpeed = Math.abs((a - b) / leftTime);
+            leftExpantionSpeed = Mathf.Abs((a - b) / leftTime);
 
             // âEñ⁄
-            float deltaRightMaxToMin = Math.abs(RightAverage - RightPupilMin);
-            float c = rightAverage - deltaRightMaxToMin * 0.9; // 10%çƒägí£
-            float d = rightAverage - deltaRightMaxToMin * 0.5; // 50%çƒägí£
-            float c_time = GetFirstTimeAboveDiameter(rightExpantionList, a);
-            float d_time = GetFirstTimeAboveDiameter(rightExpantionList, b);
+            float deltaRightMaxToMin = Mathf.Abs(rightAverage - rightPupilMin);
+            float c = rightAverage - deltaRightMaxToMin * 0.9f; // 10%çƒägí£
+            float d = rightAverage - deltaRightMaxToMin * 0.5f; // 50%çƒägí£
+            float c_time = GetFirstTimeAboveDiameter(rightExpantionList, c);
+            float d_time = GetFirstTimeAboveDiameter(rightExpantionList, d);
             float rightTime = d_time - c_time;
 
-            rightExpantionSpeed = Math.abs((c - d) / rightTime);
-
+            rightExpantionSpeed = Mathf.Abs((c - d) / rightTime);
         }
-
 
         private void CalculateContractionSpeed()
         {
             // ç∂ñ⁄
-            float deltaLeftMaxToMin = Math.abs(leftAverage - leftPupilMin);
-            float a = leftAverage - deltaLeftMaxToMin * 0.1; // 10%é˚èk
-            float b = leftAverage - deltaLeftMaxToMin * 0.9; // 90%é˚èk
+            float deltaLeftMaxToMin = Mathf.Abs(leftAverage - leftPupilMin);
+            float a = leftAverage - deltaLeftMaxToMin * 0.1f; // 10%é˚èk
+            float b = leftAverage - deltaLeftMaxToMin * 0.9f; // 90%é˚èk
             float a_time = GetFirstTimeBelowDiameter(leftContractionList, a);
             float b_time = GetFirstTimeBelowDiameter(leftContractionList, b);
             float leftTime = b_time - a_time;
 
-            leftContractionSpeed = Math.abs((a - b) / leftTime);
+            leftContractionSpeed = Mathf.Abs((a - b) / leftTime);
 
             // âEñ⁄
-            float deltaRightMaxToMin = Math.abs(RightAverage - RightPupilMin);
-            float c = rightAverage - deltaRightMaxToMin * 0.1; // 10%é˚èk
-            float d = rightAverage - deltaRightMaxToMin * 0.9; // 90%é˚èk
-            float c_time = GetFirstTimeBelowDiameter(rightContractionList, a);
-            float d_time = GetFirstTimeBelowDiameter(rightContractionList, b);
+            float deltaRightMaxToMin = Mathf.Abs(rightAverage - rightPupilMin);
+            float c = rightAverage - deltaRightMaxToMin * 0.1f; // 10%é˚èk
+            float d = rightAverage - deltaRightMaxToMin * 0.9f; // 90%é˚èk
+            float c_time = GetFirstTimeBelowDiameter(rightContractionList, c);
+            float d_time = GetFirstTimeBelowDiameter(rightContractionList, d);
             float rightTime = d_time - c_time;
 
-            rightContractionSpeed = Math.abs((c - d) / rightTime);
-
+            rightContractionSpeed = Mathf.Abs((c - d) / rightTime);
         }
 
 
-        private (List<float[]> before, List<float[]> after) SplitDiameterTimeList(List<float[] DiameterTimeList>, float diameter)
+        public static bool AreApproximatelyEqual(float a, float b, float epsilon = 0.0001f)
+        {
+            return Mathf.Abs(a - b) < epsilon;
+        }
+
+        private (List<float[]> before, List<float[]> after) SplitDiameterTimeList(List<float[]> diameterTimeList, float diameter)
         {
             List<float[]> beforeList = new List<float[]>();
             List<float[]> afterList = new List<float[]>();
+            bool isContraction = true;
 
-            foreach (var entry in DiameterTimeList)
+            Debug.LogError($"-----------start------------");
+
+            foreach (var entry in diameterTimeList)
             {
-                if (entry[0] < diameter)
+                bool result = AreApproximatelyEqual(entry[0], diameter);
+                Debug.LogError($"{entry[0]} vs {diameter}, isContraction: {isContraction}");
+                if (isContraction && !result)
                 {
                     beforeList.Add(entry);
+                    Debug.LogError($"before");
+                } else if (result)
+                {
+                    Debug.LogError($"Min!!!!!!");
+                    isContraction = false;
                 }
                 else
                 {
                     afterList.Add(entry);
+                    Debug.LogError($"after");
                 }
             }
 
+            Debug.LogError($"before: {beforeList.Count}");
+            Debug.LogError($"after: {afterList.Count}");
+
             // before:é˚èkéû after:çƒägí£éû
-            return (beforeList, afterList);
+            return (before: beforeList, after: afterList);
         }
 
         private void GetEyeGazeData()

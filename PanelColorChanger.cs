@@ -5,8 +5,6 @@ public class PanelColorChanger : MonoBehaviour
 {
     private Image panelImage;
 
-    private bool isWhite = false;
-
     private void Start()
     {
         // アタッチされたPanelのImageコンポーネントを取得
@@ -23,18 +21,11 @@ public class PanelColorChanger : MonoBehaviour
     {
         // パネルの色を白に変更
         panelImage.color = Color.white;
-        isWhite = true;
 
         // 1秒待機
-        yield return new WaitForSeconds(5f);
+        yield return new WaitForSeconds(3f);
 
         // パネルの色を黒に変更
         panelImage.color = Color.black;
-        isWhite = false;
-    }
-
-    public bool getIsWhite()
-    {
-        return isWhite;
     }
 }
