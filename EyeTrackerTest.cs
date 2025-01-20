@@ -21,7 +21,10 @@ namespace VIVE.OpenXR.Samples.EyeTracker
         private float rightPupilSum = 0f;
         private int leftPupilCount = 0;
         private int rightPupilCount = 0;
-        private float averageInterval = 10f; // 10秒で平均値を取得
+        private float averageInterval = 60f; // 平均値を取得
+
+        private float responceInterval = 30f; // 対光反応開始から計測終了までの時間
+
         private float timeElapsed = 0f;
 
         // 平均値表示用の変数
@@ -52,6 +55,9 @@ namespace VIVE.OpenXR.Samples.EyeTracker
 
         bool isExport = false;
 
+        // 潜時
+        float leftLatency = 0f;
+        float rightLatency = 0f;
 
         void Update()
         {
@@ -76,11 +82,29 @@ namespace VIVE.OpenXR.Samples.EyeTracker
                 if (isStop)
                 {
 
-                    if (!isExport) {
+                    if (!isExport)
+                    {
                         ExportToCsv();
                         Debug.LogError("Export to CSV!");
+
+                        // 平均値を表示
+                        DisplayAveragePupilValues();
+
+                        // 最小値を表示
+                        DisplayPupilMinValues();
+
+                        // 収縮速度を表示
+                        DisplayContractionSpeed();
+
+                        // 再拡張速度を表示
+                        DisplayExpantionSpeed();
+
+                        // 潜時を表示
+                        DisplayLatency();
                     }
-                    
+
+
+
                     return;
                 }
 
@@ -90,28 +114,20 @@ namespace VIVE.OpenXR.Samples.EyeTracker
                     LightResponce();
                 }
 
-                m_Text.text = "[Eye Tracker]\n";
+                //m_Text.text = "[Eye Tracker]\n";
+                m_Text.text = "";
+
 
                 GetEyeGazeData();
                 GetPupilData();
 
-                // 瞳孔の最小値を更新
+                // 瞳孔の最小値と収縮率を更新
                 UpdatePupilMinValues();
 
-                // 10秒ごとの平均値を計算（未計算の場合のみ）
+                // 平均値を計算（未計算の場合のみ）
                 CalculateAveragePupilValues();
 
-                // 平均値を表示
-                DisplayAveragePupilValues();
 
-                // 最小値を表示
-                DisplayPupilMinValues();
-
-                // 収縮速度を表示
-                DisplayContractionSpeed();
-
-                // 再拡張速度を表示
-                DisplayExpantionSpeed();
 
             }
 
@@ -130,6 +146,9 @@ namespace VIVE.OpenXR.Samples.EyeTracker
 
             ExportPupilDataToCsv("PupilData.csv");
 
+            ExportAverageListsToCsv(leftAverageList, "LeftAverageList.csv");
+            ExportAverageListsToCsv(rightAverageList, "RightAverageList.csv");
+
             isExport = true;
         }
 
@@ -137,13 +156,13 @@ namespace VIVE.OpenXR.Samples.EyeTracker
         private void ExportPupilDataToCsv(string fileName)
         {
             StringBuilder csvContent = new StringBuilder();
-            csvContent.AppendLine("Eye,Average Diameter,Minimum Diameter,Contraction Rate,Contraction Speed,Expansion Speed"); // 見出し行の追加
+            csvContent.AppendLine("Eye,Average Diameter,Minimum Diameter,Contraction Rate,Contraction Speed,Expansion Speed,Latency"); // 見出し行の追加
 
             // 左目のデータ
-            csvContent.AppendLine($"Left,{leftAverage.ToString("F4")},{leftPupilMin.ToString("F4")},{leftContractionRate.ToString("F4")},{leftContractionSpeed.ToString("F4")},{leftExpantionSpeed.ToString("F4")}");
+            csvContent.AppendLine($"Left,{leftAverage.ToString("F4")},{leftPupilMin.ToString("F4")},{leftContractionRate.ToString("F4")},{leftContractionSpeed.ToString("F4")},{leftExpantionSpeed.ToString("F4")},{leftLatency.ToString("F4")}");
 
             // 右目のデータ
-            csvContent.AppendLine($"Right,{rightAverage.ToString("F4")},{rightPupilMin.ToString("F4")},{rightContractionRate.ToString("F4")},{rightContractionSpeed.ToString("F4")},{rightExpantionSpeed.ToString("F4")}");
+            csvContent.AppendLine($"Right,{rightAverage.ToString("F4")},{rightPupilMin.ToString("F4")},{rightContractionRate.ToString("F4")},{rightContractionSpeed.ToString("F4")},{rightExpantionSpeed.ToString("F4")},{rightLatency.ToString("F4")}");
 
             // カレントディレクトリにファイルを出力
             string filePath = Path.Combine(Directory.GetCurrentDirectory(), fileName);
@@ -168,6 +187,22 @@ namespace VIVE.OpenXR.Samples.EyeTracker
             Debug.Log($"{fileName} has been saved to {filePath}");
         }
 
+        private void ExportAverageListsToCsv(List<float[]> averageList, string fileName)
+        {
+            StringBuilder csvContent = new StringBuilder();
+            csvContent.AppendLine("Average Diameter,Time"); // 見出し行の追加
+
+            foreach (var entry in averageList)
+            {
+                csvContent.AppendLine($"{entry[0]},{entry[1]}"); // Average Diameter と Time をカンマ区切りで追加
+            }
+
+            // カレントディレクトリにファイルを出力
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), fileName);
+            File.WriteAllText(filePath, csvContent.ToString()); // CSVファイルに書き込み
+            Debug.Log($"{fileName} has been saved to {filePath}");
+        }
+
         List<float[]> leftDiameterTimeList = new List<float[]>(); // [Diameter,sec]を格納
         List<float[]> rightDiameterTimeList = new List<float[]>();
 
@@ -176,6 +211,10 @@ namespace VIVE.OpenXR.Samples.EyeTracker
 
         List<float[]> rightContractionList = new List<float[]>();
         List<float[]> rightExpantionList = new List<float[]>();
+
+        // 平均値を算出している間の瞳孔半径、時間を集めたリスト
+        List<float[]> leftAverageList = new List<float[]>(); // [leftAverage,sec]を格納
+        List<float[]> rightAverageList = new List<float[]>(); // [rightAverage,sec]を格納
 
 
         private void LightResponce()
@@ -187,7 +226,17 @@ namespace VIVE.OpenXR.Samples.EyeTracker
                 isWhiteStart = true;
             }
 
-            if (sec < 10f)
+            if (!isLeftContractionStart)
+            {
+                leftLatency += Time.deltaTime;
+            }
+
+            if (!isRightContractionStart)
+            {
+                rightLatency += Time.deltaTime;
+            }
+
+            if (sec < responceInterval)
             {
                 Debug.LogError($"Adding data - leftDiameter: {leftDiameter}, sec: {sec}");
                 leftDiameterTimeList.Add(new float[] { leftDiameter, sec });
@@ -201,17 +250,17 @@ namespace VIVE.OpenXR.Samples.EyeTracker
                 var leftList = SplitDiameterTimeList(leftDiameterTimeList, leftPupilMin);
                 var rightList = SplitDiameterTimeList(rightDiameterTimeList, rightPupilMin);
 
-                
+
 
                 leftContractionList = leftList.before;
                 leftExpantionList = leftList.after;
-                Debug.LogError($"leftContractionListCount: {leftContractionList.Count}");
-                Debug.LogError($"leftExpantionListCount: {leftExpantionList.Count}");
+                //Debug.LogError($"leftContractionListCount: {leftContractionList.Count}");
+                //Debug.LogError($"leftExpantionListCount: {leftExpantionList.Count}");
 
                 rightContractionList = rightList.before;
                 rightExpantionList = rightList.after;
-                Debug.LogError($"rightContractionListCount: {rightContractionList.Count}");
-                Debug.LogError($"rightExpantionListCount: {rightExpantionList.Count}");
+                //Debug.LogError($"rightContractionListCount: {rightContractionList.Count}");
+                //Debug.LogError($"rightExpantionListCount: {rightExpantionList.Count}");
 
                 CalculateContractionSpeed();
                 CalculateExpantionSpeed();
@@ -220,6 +269,7 @@ namespace VIVE.OpenXR.Samples.EyeTracker
             }
 
         }
+
         private void DisplayContractionSpeed()
         {
             m_Text.text += "左目収縮速度: " + leftContractionSpeed.ToString("F4") + " mm/s\n";
@@ -265,6 +315,7 @@ namespace VIVE.OpenXR.Samples.EyeTracker
 
             return -1f; // 指定されたDiameterを上回る要素が見つからなかった場合
         }
+
 
 
         private void CalculateExpantionSpeed()
@@ -335,7 +386,8 @@ namespace VIVE.OpenXR.Samples.EyeTracker
                 {
                     beforeList.Add(entry);
                     Debug.LogError($"before");
-                } else if (result)
+                }
+                else if (result)
                 {
                     Debug.LogError($"Min!!!!!!");
                     isContraction = false;
@@ -393,9 +445,9 @@ namespace VIVE.OpenXR.Samples.EyeTracker
             }
         }
 
-        float leftDiameter = 0;
+        float leftDiameter = 0f;
 
-        float rightDiameter = 0;
+        float rightDiameter = 0f;
 
         private void UpdatePupilValues(XrSingleEyePupilDataHTC[] out_pupils)
         {
@@ -427,8 +479,12 @@ namespace VIVE.OpenXR.Samples.EyeTracker
         }
 
         // 収縮率
-        float leftContractionRate = 0;
-        float rightContractionRate = 0;
+        float leftContractionRate = 0f;
+        float rightContractionRate = 0f;
+
+        bool isLeftContractionStart = false;
+        bool isRightContractionStart = false;
+
 
         private void UpdatePupilMinValues()
         {
@@ -444,31 +500,52 @@ namespace VIVE.OpenXR.Samples.EyeTracker
                 rightPupilMin = Mathf.Min(rightPupilMin, rightDiameter);
             }
 
-            // 収縮率を算出
+            // 収縮率を更新
             if (leftAverage != 0)
             {
                 leftContractionRate = (1 - leftPupilMin / leftAverage) * 100;
+                if (leftContractionRate > 10f)
+                {
+                    if (!isLeftContractionStart)
+                    {
+                        isLeftContractionStart = true
+                    }
+                }
+
             }
 
             if (rightAverage != 0)
             {
                 rightContractionRate = (1 - rightPupilMin / rightAverage) * 100;
+                if (rightContractionRate > 10f)
+                {
+                    if (!isRightContractionStart)
+                    {
+                        isRightContractionStart = true
+                    }
+                }
             }
         }
 
-        float leftAverage = 0;
-        float rightAverage = 0;
+        float leftAverage = 0f;
+        float rightAverage = 0f;
 
         private void CalculateAveragePupilValues()
         {
             if (!hasCalculatedAverage)
             {
                 timeElapsed += Time.deltaTime;
+
+                leftAverage = leftPupilCount > 0 ? leftPupilSum / leftPupilCount : 0f;
+                rightAverage = rightPupilCount > 0 ? rightPupilSum / rightPupilCount : 0f;
+
+                // 平均値リストに追加
+                leftAverageList.Add(new float[] { leftAverage, timeElapsed });
+                rightAverageList.Add(new float[] { rightAverage, timeElapsed });
+
+
                 if (timeElapsed >= averageInterval)
                 {
-                    leftAverage = leftPupilCount > 0 ? leftPupilSum / leftPupilCount : 0f;
-                    rightAverage = rightPupilCount > 0 ? rightPupilSum / rightPupilCount : 0f;
-
                     leftAverageText = "左目の平均瞳孔半径: " + leftAverage.ToString("F4") + " mm\n";
                     rightAverageText = "右目の平均瞳孔半径: " + rightAverage.ToString("F4") + " mm\n";
 
@@ -500,6 +577,22 @@ namespace VIVE.OpenXR.Samples.EyeTracker
             {
                 m_Text.text += "右目の最小瞳孔半径: " + rightPupilMin.ToString("F4") + " mm\n";
                 m_Text.text += "右目の収縮率: " + rightContractionRate.ToString("F4") + " %\n";
+            }
+
+
+        }
+
+        private void DisplayLatency()
+        {
+            // 潜時を表示
+            if (leftLatency > 0)
+            {
+                m_Text.text += "左目の潜時: " + leftLatency.ToString("F4") + " 秒\n";
+            }
+
+            if (rightLatency > 0)
+            {
+                m_Text.text += "右目の潜時: " + rightLatency.ToString("F4") + " 秒\n";
             }
 
 
