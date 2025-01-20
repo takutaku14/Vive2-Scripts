@@ -23,7 +23,7 @@ public class PanelColorChanger : MonoBehaviour
         panelImage.color = Color.white;
 
         // 待機
-        yield return new WaitForSeconds(30f);
+        yield return new WaitForSeconds(10f);
 
         // パネルの色を黒に変更
         panelImage.color = Color.black;

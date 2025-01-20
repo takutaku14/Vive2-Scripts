@@ -224,25 +224,19 @@ namespace VIVE.OpenXR.Samples.EyeTracker
             {
                 panelColorChanger.ChangeColor();
                 isWhiteStart = true;
+                Debug.LogError($"Start LightResponce!");
+
             }
 
-            if (!isLeftContractionStart)
-            {
-                leftLatency += Time.deltaTime;
-            }
 
-            if (!isRightContractionStart)
-            {
-                rightLatency += Time.deltaTime;
-            }
 
             if (sec < responceInterval)
             {
-                Debug.LogError($"Adding data - leftDiameter: {leftDiameter}, sec: {sec}");
+                // Debug.LogError($"Adding data - leftDiameter: {leftDiameter}, sec: {sec}");
                 leftDiameterTimeList.Add(new float[] { leftDiameter, sec });
                 rightDiameterTimeList.Add(new float[] { rightDiameter, sec });
                 sec += Time.deltaTime;
-                Debug.LogError($"List count after adding: {leftDiameterTimeList.Count}");
+                // Debug.LogError($"List count after adding: {leftDiameterTimeList.Count}");
             }
             else if (!isStop)
             {
@@ -254,13 +248,13 @@ namespace VIVE.OpenXR.Samples.EyeTracker
 
                 leftContractionList = leftList.before;
                 leftExpantionList = leftList.after;
-                //Debug.LogError($"leftContractionListCount: {leftContractionList.Count}");
-                //Debug.LogError($"leftExpantionListCount: {leftExpantionList.Count}");
+                //// Debug.LogError($"leftContractionListCount: {leftContractionList.Count}");
+                //// Debug.LogError($"leftExpantionListCount: {leftExpantionList.Count}");
 
                 rightContractionList = rightList.before;
                 rightExpantionList = rightList.after;
-                //Debug.LogError($"rightContractionListCount: {rightContractionList.Count}");
-                //Debug.LogError($"rightExpantionListCount: {rightExpantionList.Count}");
+                //// Debug.LogError($"rightContractionListCount: {rightContractionList.Count}");
+                //// Debug.LogError($"rightExpantionListCount: {rightExpantionList.Count}");
 
                 CalculateContractionSpeed();
                 CalculateExpantionSpeed();
@@ -376,31 +370,31 @@ namespace VIVE.OpenXR.Samples.EyeTracker
             List<float[]> afterList = new List<float[]>();
             bool isContraction = true;
 
-            Debug.LogError($"-----------start------------");
+            // Debug.LogError($"-----------start------------");
 
             foreach (var entry in diameterTimeList)
             {
                 bool result = AreApproximatelyEqual(entry[0], diameter);
-                Debug.LogError($"{entry[0]} vs {diameter}, isContraction: {isContraction}");
+                // Debug.LogError($"{entry[0]} vs {diameter}, isContraction: {isContraction}");
                 if (isContraction && !result)
                 {
                     beforeList.Add(entry);
-                    Debug.LogError($"before");
+                    // Debug.LogError($"before");
                 }
                 else if (result)
                 {
-                    Debug.LogError($"Min!!!!!!");
+                    // Debug.LogError($"Min!!!!!!");
                     isContraction = false;
                 }
                 else
                 {
                     afterList.Add(entry);
-                    Debug.LogError($"after");
+                    // Debug.LogError($"after");
                 }
             }
 
-            Debug.LogError($"before: {beforeList.Count}");
-            Debug.LogError($"after: {afterList.Count}");
+            // Debug.LogError($"before: {beforeList.Count}");
+            // Debug.LogError($"after: {afterList.Count}");
 
             // before:収縮時 after:再拡張時
             return (before: beforeList, after: afterList);
@@ -418,7 +412,7 @@ namespace VIVE.OpenXR.Samples.EyeTracker
         private void UpdateGazeTransform(XrSingleEyeGazeDataHTC[] out_gazes)
         {
             XrSingleEyeGazeDataHTC leftGaze = out_gazes[(int)XrEyePositionHTC.XR_EYE_POSITION_LEFT_HTC];
-            m_Text.text += "左目の状態: " + (leftGaze.isValid ? "開いている" : "閉じている") + "\n";
+            //m_Text.text += "左目の状態: " + (leftGaze.isValid ? "開いている" : "閉じている") + "\n";
 
             if (leftGaze.isValid)
             {
@@ -427,7 +421,7 @@ namespace VIVE.OpenXR.Samples.EyeTracker
             }
 
             XrSingleEyeGazeDataHTC rightGaze = out_gazes[(int)XrEyePositionHTC.XR_EYE_POSITION_RIGHT_HTC];
-            m_Text.text += "右目の状態: " + (rightGaze.isValid ? "開いている" : "閉じている") + "\n";
+            //m_Text.text += "右目の状態: " + (rightGaze.isValid ? "開いている" : "閉じている") + "\n";
 
             if (rightGaze.isValid)
             {
@@ -457,11 +451,11 @@ namespace VIVE.OpenXR.Samples.EyeTracker
                 leftDiameter = leftPupil.pupilDiameter * 1000; // mm
                 leftPupilSum += leftDiameter;
                 leftPupilCount++;
-                m_Text.text += "左目の瞳孔半径: " + leftDiameter.ToString("F4") + " mm\n";
+                //m_Text.text += "左目の瞳孔半径: " + leftDiameter.ToString("F4") + " mm\n";
             }
             else
             {
-                m_Text.text += "左目の瞳孔半径: 無効\n";
+                //m_Text.text += "左目の瞳孔が認識されていません\n";
             }
 
             XrSingleEyePupilDataHTC rightPupil = out_pupils[(int)XrEyePositionHTC.XR_EYE_POSITION_RIGHT_HTC];
@@ -470,11 +464,11 @@ namespace VIVE.OpenXR.Samples.EyeTracker
                 rightDiameter = rightPupil.pupilDiameter * 1000; // mm
                 rightPupilSum += rightDiameter;
                 rightPupilCount++;
-                m_Text.text += "右目の瞳孔半径: " + rightDiameter.ToString("F4") + " mm\n";
+                //m_Text.text += "右目の瞳孔半径: " + rightDiameter.ToString("F4") + " mm\n";
             }
             else
             {
-                m_Text.text += "右目の瞳孔半径: 無効\n";
+                //m_Text.text += "右目の瞳孔が認識されていません\n";
             }
         }
 
@@ -488,27 +482,41 @@ namespace VIVE.OpenXR.Samples.EyeTracker
 
         private void UpdatePupilMinValues()
         {
-            // 左目の最小値を更新
-            if (leftPupilCount > 0)
-            {
-                leftPupilMin = Mathf.Min(leftPupilMin, leftDiameter);
-            }
 
-            // 右目の最小値を更新
-            if (rightPupilCount > 0)
-            {
-                rightPupilMin = Mathf.Min(rightPupilMin, rightDiameter);
+            if (isWhiteStart) {
+                // 左目の最小値を更新
+                if (leftPupilCount > 0)
+                {
+                    leftPupilMin = Mathf.Min(leftPupilMin, leftDiameter);
+                }
+
+                // 右目の最小値を更新
+                if (rightPupilCount > 0)
+                {
+                    rightPupilMin = Mathf.Min(rightPupilMin, rightDiameter);
+                }
+
             }
 
             // 収縮率を更新
             if (leftAverage != 0)
             {
                 leftContractionRate = (1 - leftPupilMin / leftAverage) * 100;
-                if (leftContractionRate > 10f)
+                Debug.LogError($"leftContractionRate: {leftContractionRate}, {timeElapsed}");
+
+                if (leftContractionRate >= 10f)
                 {
-                    if (!isLeftContractionStart)
+
+                    if (!isLeftContractionStart && isWhiteStart)
                     {
-                        isLeftContractionStart = true
+                        isLeftContractionStart = true;
+                    }
+                }
+
+                if (!isLeftContractionStart) {
+                    if (isWhiteStart) { 
+                        leftLatency += Time.deltaTime;
+                        Debug.LogError($"leftLatecncy: {leftLatency}");
                     }
                 }
 
@@ -517,11 +525,23 @@ namespace VIVE.OpenXR.Samples.EyeTracker
             if (rightAverage != 0)
             {
                 rightContractionRate = (1 - rightPupilMin / rightAverage) * 100;
-                if (rightContractionRate > 10f)
+                Debug.LogError($"rightContractionRate: {rightContractionRate}, {timeElapsed}");
+
+                if (rightContractionRate >= 10f)
                 {
-                    if (!isRightContractionStart)
+
+                    if (!isRightContractionStart && isWhiteStart)
                     {
-                        isRightContractionStart = true
+                        isRightContractionStart = true;
+                    }
+                }
+
+                if (!isRightContractionStart)
+                {
+                    if (isWhiteStart)
+                    {
+                        rightLatency += Time.deltaTime;
+                        Debug.LogError($"rightLatecncy: {rightLatency}");
                     }
                 }
             }
@@ -585,16 +605,8 @@ namespace VIVE.OpenXR.Samples.EyeTracker
         private void DisplayLatency()
         {
             // 潜時を表示
-            if (leftLatency > 0)
-            {
-                m_Text.text += "左目の潜時: " + leftLatency.ToString("F4") + " 秒\n";
-            }
-
-            if (rightLatency > 0)
-            {
-                m_Text.text += "右目の潜時: " + rightLatency.ToString("F4") + " 秒\n";
-            }
-
+            m_Text.text += "左目の潜時: " + leftLatency.ToString("F4") + " 秒\n";
+            m_Text.text += "右目の潜時: " + rightLatency.ToString("F4") + " 秒\n";
 
         }
     }
